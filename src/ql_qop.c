@@ -1,4 +1,4 @@
-/**
+/*
    Copyright 2018 OpenQL Project developers.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,54 +22,41 @@
 #include "openql/ql_utils.h"
 #include "openql/ql_qreg.h"
 #include "openql/ql_decoherence.h"
-#include "openql/ql_qec.h"
 #include "openql/ql_error.h"
 
 ql_qreg *ql_qop_CX(ql_qreg *reg, int control, int target) {
-  int qec = 0;
-  ql_qec_get_status(&qec, NULL);
-  if(qec){
-    ql_qec_qop_CX(reg, control, target);
-  } else {
-
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif      
-      for(int i = 0; i<reg->size; i++) {
-        if((reg->state[i] & ((MAX_UNSIGNED) 1 << control)))
-        reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
-      }
-      ql_decoherence(reg);
-  }
-  return reg;
-}
-
-ql_qreg *ql_qop_CCX(ql_qreg *reg, int control1, int control2, int target) {
-  int qec = 0;
-  ql_qec_get_status(&qec, NULL);
-  if(qec){
-    ql_qec_qop_CCX(reg, control1, control2, target);
-  } else {
 
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i = 0; i<reg->size; i++) {
-      if(reg->state[i] & ((MAX_UNSIGNED) 1 << control1)) {
-        if(reg->state[i] & ((MAX_UNSIGNED) 1 << control2)) {
+  for(int i = 0; i<reg->size; i++) {
+    if((reg->state[i] & ((MAX_UNSIGNED) 1 << control)))
+      reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
+  }
+  ql_decoherence(reg);
+  return reg;
+}
+
+ql_qreg *ql_qop_CCX(ql_qreg *reg, int control1, int control2, int target) {
+
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+  for(int i = 0; i<reg->size; i++) {
+    if(reg->state[i] & ((MAX_UNSIGNED) 1 << control1)) {
+      if(reg->state[i] & ((MAX_UNSIGNED) 1 << control2)) {
           reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
-        }
       }
     }
-    ql_decoherence(reg);
   }
+  ql_decoherence(reg);
   return reg;
 }
 
 ql_qreg *ql_qop_controlled_X(int controls, ql_qreg *reg, ...) {
   int *control_qbits;
   if(!(control_qbits = malloc(controls * sizeof(int)))){
-    ql_error(QL_ENOMEM);
+      ql_error(QL_ENOMEM);
   }
   ql_matrix_memsize(controls * sizeof(int));
 
@@ -84,11 +71,11 @@ ql_qreg *ql_qop_controlled_X(int controls, ql_qreg *reg, ...) {
   int j;
 #ifdef _OPENMP
 #pragma omp parallel for private (j)
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     for(j = 0; (j < controls) && 
-	    (reg->state[i] & (MAX_UNSIGNED) 1 << control_qbits[j]); j++);
-      
+     (reg->state[i] & (MAX_UNSIGNED) 1 << control_qbits[j]); j++);
+
     if(j == controls) /* all control bits are set */
       reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
   }
@@ -98,22 +85,16 @@ ql_qreg *ql_qop_controlled_X(int controls, ql_qreg *reg, ...) {
   ql_decoherence(reg);
   return reg;
 }
-  
+
 ql_qreg *ql_qop_X(ql_qreg *reg, int target) {
-  int qec = 0;
-  ql_qec_get_status(&qec, NULL);
-  if(qec){
-    ql_qec_qop_X(reg, target);
-  } else {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
-    for(int i = 0; i<reg->size; i++) {
-      reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
-    } 
-    ql_decoherence(reg);
+#endif
+  for(int i = 0; i<reg->size; i++) {
+    reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
   }
+  ql_decoherence(reg);
   return reg;
 }
 
@@ -121,7 +102,7 @@ ql_qreg *ql_qop_Y(ql_qreg *reg, int target) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif        
+#endif
   for(int i = 0; i<reg->size;i++) {
     reg->state[i] ^= ((MAX_UNSIGNED) 1 << target);
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)){
@@ -137,7 +118,7 @@ ql_qreg *ql_qop_Z(ql_qreg *reg, int target) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << target))
       reg->amplitude[i] *= -1;
@@ -147,28 +128,18 @@ ql_qreg *ql_qop_Z(ql_qreg *reg, int target) {
 }
 
 ql_qreg *ql_qop_SWAP(ql_qreg *reg, int width) {
-  int qec = 0;
-  ql_qec_get_status(&qec, NULL);
-  if(qec) {
-    for(int i = 0; i<width; i++) {
-      ql_qop_CX(reg, i, width+i);
-      ql_qop_CX(reg, width+i, i);
-      ql_qop_CX(reg, i, width+i);
+  int pat1 = 0, pat2 = 0;
+  MAX_UNSIGNED l;
+  for(int i = 0; i<reg->size; i++) {
+    pat1 = reg->state[i] % ((MAX_UNSIGNED) 1 << width);
+    pat2 = 0;
+    for(int j = 0; j<width; j++){
+      pat2 += reg->state[i] & ((MAX_UNSIGNED) 1 << (width + j));
     }
-  } else {
-    int pat1 = 0, pat2 = 0;
-    MAX_UNSIGNED l;
-    for(int i = 0; i<reg->size; i++) {
-      pat1 = reg->state[i] % ((MAX_UNSIGNED) 1 << width);
-      pat2 = 0;
-      for(int j = 0; j<width; j++){
-        pat2 += reg->state[i] & ((MAX_UNSIGNED) 1 << (width + j));
-      }
-      l = reg->state[i] - (pat1 + pat2);
-      l += (pat1 << width);
-      l += (pat2 >> width);
-      reg->state[i] = l;
-    }
+    l = reg->state[i] - (pat1 + pat2);
+    l += (pat1 << width);
+    l += (pat2 >> width);
+    reg->state[i] = l;
   }
   return reg;
 }
@@ -194,12 +165,12 @@ ql_qreg *ql_qop_U1(ql_qreg *reg, int target, ql_matrix *m) {
         addsize++;
       }
     }
-      
+
     reg->state = realloc(reg->state, 
-			       (reg->size + addsize) * sizeof(MAX_UNSIGNED));
+            (reg->size + addsize) * sizeof(MAX_UNSIGNED));
     reg->amplitude = realloc(reg->amplitude, 
-			       (reg->size + addsize) * sizeof(COMPLEX_FLOAT));
-      
+            (reg->size + addsize) * sizeof(COMPLEX_FLOAT));
+
     if(reg->size && !(reg->state && reg->amplitude)){
       ql_error(QL_ENOMEM);
     }
@@ -238,22 +209,22 @@ ql_qreg *ql_qop_U1(ql_qreg *reg, int target, ql_matrix *m) {
       if(j >= 0) {
         if(iset){
           reg->amplitude[j] = m->t[0] * tnot + m->t[1] * t;
-	      } else {
+        } else {
           reg->amplitude[j] = m->t[2] * t + m->t[3] * tnot;
         }
-	    } else {
-	      if((m->t[1] == 0) && (iset)) break;
-	      if((m->t[2] == 0) && !(iset)) break; 
+      } else {
+        if((m->t[1] == 0) && (iset)) break;
+        if((m->t[2] == 0) && !(iset)) break; 
 
-	      reg->state[k] = reg->state[i] 
+        reg->state[k] = reg->state[i] 
                       ^ ((MAX_UNSIGNED) 1 << target);
-	      if(iset){
+        if(iset){
           reg->amplitude[k] = m->t[1] * t;
-	      } else {
+        } else {
           reg->amplitude[k] = m->t[2] * t;
         }
-	      k++;
-	    }
+        k++;
+      }
       if(j >= 0){
         done[j] = 1;
       }
@@ -280,7 +251,7 @@ ql_qreg *ql_qop_U1(ql_qreg *reg, int target, ql_matrix *m) {
                      reg->size * sizeof(COMPLEX_FLOAT));
       reg->state = realloc(reg->state, 
                      reg->size * sizeof(MAX_UNSIGNED));
-  
+
       if(reg->size && !(reg->state && reg->amplitude)){
         ql_error(QL_ENOMEM);
       }
@@ -291,7 +262,7 @@ ql_qreg *ql_qop_U1(ql_qreg *reg, int target, ql_matrix *m) {
 
   if(reg->size > (1 << (reg->hashw-1))){
     fprintf(stderr, "Warning: inefficient hash table (size %i vs hash %i)\n", 
-	    reg->size, 1<<reg->hashw);
+      reg->size, 1<<reg->hashw);
   }
   ql_decoherence(reg);
   return reg;
@@ -319,7 +290,7 @@ ql_qreg *ql_qop_U2(ql_qreg *reg, int target1, int target2, ql_matrix *m) {
                  (reg->size + addsize) * sizeof(MAX_UNSIGNED));
   reg->amplitude = realloc(reg->amplitude, 
                  (reg->size + addsize) * sizeof(COMPLEX_FLOAT));
-      
+
   if(reg->size && !(reg->state && reg->amplitude)) {
     ql_error(QL_ENOMEM);
   }
@@ -358,21 +329,21 @@ ql_qreg *ql_qop_U2(ql_qreg *reg, int target1, int target2, ql_matrix *m) {
                     ^ ((MAX_UNSIGNED) 1 << target2));
 
       for(int j = 0; j<4; j++) {
-	      if(base[j] == -1) {
+        if(base[j] == -1) {
           base[j] = l;
-  //		  reg->node[l].state = reg->state[i]
+  //      reg->node[l].state = reg->state[i]
           l++;
         }
-	      psi_sub[j] = reg->amplitude[base[j]];
-	    }
+        psi_sub[j] = reg->amplitude[base[j]];
+      }
 
       for(int j = 0; j<4; j++) {
-	      reg->amplitude[base[j]] = 0;
-	      for(int k = 0; k<4; k++){
+        reg->amplitude[base[j]] = 0;
+        for(int k = 0; k<4; k++){
             reg->amplitude[base[j]] += M(m, k, j) * psi_sub[k];
         }
-	      done[base[j]] = 1;
-	    }
+        done[base[j]] = 1;
+      }
 
     }
   }
@@ -397,7 +368,7 @@ ql_qreg *ql_qop_U2(ql_qreg *reg, int target1, int target2, ql_matrix *m) {
                      reg->size * sizeof(COMPLEX_FLOAT));
     reg->state = realloc(reg->state, 
                      reg->size * sizeof(MAX_UNSIGNED));
-	  
+
     if(reg->size && !(reg->state && reg->amplitude)){
       ql_error(QL_ENOMEM);
     }
@@ -450,7 +421,7 @@ ql_qreg *ql_qop_rY(ql_qreg *reg, int target, float gamma) {
 
 ql_qreg *ql_qop_rZ(ql_qreg *reg, int target, float gamma) {
   COMPLEX_FLOAT z = euler_formula(gamma/2);
-  
+
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)) {
       reg->amplitude[i] *= z;
@@ -467,7 +438,7 @@ ql_qreg *ql_qop_P_scale(ql_qreg *reg, int target, float gamma) {
 
 #ifdef _OPENMP
   #pragma omp parallel for
-#endif        
+#endif
   for(int i = 0; i<reg->size; i++) {
     reg->amplitude[i] *= z;
   }
@@ -480,7 +451,7 @@ ql_qreg *ql_qop_P_kick(ql_qreg *reg, int target, float gamma) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif        
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)) {
       reg->amplitude[i] *= z;
@@ -495,7 +466,7 @@ ql_qreg *ql_qop_CP(ql_qreg *reg, int control, int target) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << control)) {
       if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)) {
@@ -512,7 +483,7 @@ ql_qreg *ql_qop_CP_inv(ql_qreg *reg, int control, int target) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << control)) {
       if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)) {
@@ -529,7 +500,7 @@ ql_qreg *ql_qop_CP_kick(ql_qreg *reg, int control, int target, float gamma) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << control)) {
       if(reg->state[i] & ((MAX_UNSIGNED) 1 << target))
@@ -545,7 +516,7 @@ ql_qreg *ql_qop_CP_shift(ql_qreg *reg, int control, int target, float gamma) {
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif      
+#endif
   for(int i = 0; i<reg->size; i++) {
     if(reg->state[i] & ((MAX_UNSIGNED) 1 << control)) {
       if(reg->state[i] & ((MAX_UNSIGNED) 1 << target)){
