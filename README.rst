@@ -5,12 +5,14 @@ libopenql is a quantum computer system environment and libraries in C/C++.
 ## How to build
 
 
-```
+```bash
+
 cd ${PROJECT_DIR}
 mkdir build
 cd build
 cmake ..
 make -j4
+
 ```
 
 ## License

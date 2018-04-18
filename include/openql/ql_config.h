@@ -1,4 +1,4 @@
-/**
+/*
    Copyright 2018 OpenQL Project developers.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+/**
+ * @file ql_config.h
+ * @brief Config header of OpenQL.
+ */
 /* Complex data type */
 #undef COMPLEX_FLOAT
 

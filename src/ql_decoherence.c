@@ -1,4 +1,4 @@
-/**
+/*
    Copyright 2018 OpenQL Project developers.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+/**
+ * @file ql_decoherence.c
+ * @brief decoherence
+ * @details decoherence
+ */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,10 +31,18 @@
 static int quantum_status = 0;
 static float quantum_lambda = 0;
 
+/**
+ * @brief Get decoherence lambda.
+ * @return float decoherence lambda.
+ */
 float ql_get_decoherence() {
   return quantum_lambda;
 }
 
+/**
+ * @brief Set decoherence lambda.
+ * @return void
+ */
 void ql_set_decoherence(float l) {
   if(l) {
     quantum_status = 1;
@@ -39,6 +52,11 @@ void ql_set_decoherence(float l) {
   }
 }
 
+/**
+ * @brief 
+ * @param[in] reg(qubit regiester) target qreg.
+ * @return ql_qreg qreg after decoherence.
+ */
 ql_qreg *ql_decohernce(ql_qreg *reg) {
   float u, v, s, x;
   float *nrands;
